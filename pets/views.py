@@ -1,13 +1,13 @@
-from django.forms import model_to_dict
 from rest_framework.views import APIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from .serializers import PetsSerializer
-from ..groups.models import Group
-from ..traits.models import Trait
-from .models import Pet
+from groups.models import Group
+from traits.models import Trait
+from pets.models import Pet
 # Create your views here.
 
-class PetViews(APIView):
+class PetViews(APIView, PageNumberPagination):
     def post(self, request):
         serializer = PetsSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -30,11 +30,18 @@ class PetViews(APIView):
             pet.traits.add(trait_object)
         
         serializer = PetsSerializer(pet)
-        return Response(serializer.data, status=200)
+        return Response(serializer.data, status=201)
 
-    def get(self, request, pet_id):
-        try:
-            unique_pet = Pet.objects.get(id=pet_id)
-            return Response(model_to_dict(unique_pet), 200)
-        except Pet.DoesNotExist:
-            return Response({"message": "Pet not found"}, 404)
+    def get(self, request):
+        pets = Pet.objects.all()
+        result_page = self.paginate_queryset(pets, request, view=self)
+        serializer = PetsSerializer(result_page, many=True)
+
+        return self.get_paginated_response(serializer.data)
+    
+"""     def patch(self, request, pet_id):
+        ...
+    
+    def delete(self, request, pet_id):
+        ... """
+
